@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>invalid images</title>
+    <style>
+        .container {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            grid-auto-rows: auto;
+            row-gap: 10px;
+            column-gap: 10px;
+        }
+        .header{
+            grid-column: 1/5;
+            grid-row:1/2;
+            font-size:xx-large;
+            margin-left: 0.6%;
+        }
+        #img{
+            max-width: 100%;
+            height: auto;
+            object-fit: contain;
+        }
+        .full_image{
+            display: none;
+            grid-template-columns: 10fr 1fr;
+            grid-template-rows: auto;
+            column-gap: 7px;
+        }
+        #full_img{
+            width: 100%;
+            height: auto;
+            object-fit: contain;
+        }
+        #remove_btn{
+            width: 100%;
+            height: 10%;
+            font-size: xx-large;
+        }
+        .menu{
+            margin-top: 15px;
+            height: auto;
+        }
+        .back{
+            height: 70px;
+        }
+        #back_btn{
+            font-size: xx-large;
+            width: 10%;
+            height: 100%;
+        }
+        #download{
+            width: 100%;
+            height: 4%;
+            font-size: medium;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">invalid images</div>
+        </div>
+    <div class="full_image">
+        <div class="image">
+            <img id="full_img" src="{{ url_for('static', filename='image/x_image.png') }}" alt=0>
+        </div>
+        <div class="btn">
+            <button type="button" id="remove_btn" onclick="remove_from_list()">remove</button>
+            <br />
+            <a id="img_download" href="{{ url_for('static', filename='image/full_image_invalid_v.png') }}" download><button id="download">이미지 다운로드</button></a>
+            <a id="img_download" href="{{ url_for('static', filename='image/full_image_invalid.png') }}" download><button id="download">원본 이미지 다운로드</button></a>
+        </div>
+    </div>
+    <div class="menu">
+        <div class="back">
+            <button type="button" id="back_btn" onclick="location.href='/'">back</button>
+        </div>
+    </div>
+</body>
+<script src="//cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+<script>
+    var img_name_list = {{ img_name_list|safe }}
+    $(document).ready(function() {
+        for (var i = 0; i < img_name_list.length; i++){
+            var item_tmp = "<div class=\"item\"><img id=\"img\" src=\"{{ url_for('img_show', i='index', mode=1) }}\" alt=index>".replace(/index/gi, i)+img_name_list[i]+"</div>"
+            console.log(item_tmp)
+            $(".container").append(item_tmp);
+        }
+        $(".container > .item > #img").on("click", function(){
+            var img_index = $(this).attr("alt");
+            $(".container").css({
+                display: "none"
+            })
+            $(".full_image").css({
+                display: "grid"
+            })
+            var uf = `{{ url_for('img_show', i='var', mode=1) }}`.replace('var', img_index);
+            $("#full_img").attr("src", uf)
+            $("#full_img").attr("alt", img_index)
+            $("#full_img_name").text(img_name_list[img_index])
+
+            var full_img_index = {'full_img_i':img_index, 'mode':1}
+            $.ajax({
+                url: '/copy_full_img',
+                type: 'POST',
+                data: JSON.stringify(full_img_index),
+                dataType: 'JSON',
+                contentType: "application/json",
+                success: function(data){
+                    console.log('copy to "static/image"')
+                },
+                error: function(request, status, error) {
+                    console.log('ajax 통신 실패');
+                    console.log(error);
+                }
+            })
+        })
+
+        $("#full_img").on("click", function(){
+            $(".container").css({
+                display: "grid"
+            })
+            $(".full_image").css({
+                display: "none"
+            })
+        })
+
+    });
+    function remove_from_list(){
+        var rm_img_i = $("#full_img").attr("alt");
+        var send_data = {'rm_img_i':rm_img_i};
+        $.ajax({
+            url: '/rm_from_invalid_list',
+            type: 'POST',
+            data: JSON.stringify(send_data),
+            dataType: 'JSON',
+            contentType: "application/json",
+            success: function(data){
+                console.log('success')
+                location.reload()
+            },
+            error: function(request, status, error) {
+                console.log('ajax 통신 실패');
+                console.log(error);
+            }
+        });
+    };
+</script>
+</html>

@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>sample images</title>
+    <style>
+        .container {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            grid-template-rows: repeat(3, 1fr) 100px;
+            row-gap: 7px;
+            column-gap: 7px;
+        }
+        #img{
+            max-width: 100%;
+            height: auto;
+            object-fit: contain;
+        }
+        .full_image{
+            display: none;
+            grid-template-columns: 10fr 1fr;
+            grid-template-rows: auto;
+            column-gap: 7px;
+        }
+        #full_img{
+            width: 100%;
+            height: auto;
+            object-fit: contain;
+        }
+        #invalid_btn{
+            width: 100%;
+            height: 10%;
+            font-size: xx-large;
+        }
+        .menu > button{
+            height: 100%;
+            width: 48%;
+            font-size: xx-large;
+        }
+        .refresh {
+            margin-right: 10px;
+        }
+        #class_color{
+            display: inline-block;
+            width:20px;
+            height:10px;
+            margin-left:10px;
+        }
+        .remaining_img_num{
+            font-size: x-large;
+        }
+        .remaining_img_num > p{
+            margin: 0px;
+        }
+        #color_change{
+            float: right;
+            width: 28%;
+            height: 30%;
+            font-size: large;
+        }
+        #download{
+            width: 100%;
+            height: 4%;
+            font-size: medium;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="menu">
+            <button type="button" class="refresh" onclick="sample_img_refresh()">refresh</button>
+            <button type="button" class="show_invalid" onclick="location.href='/show_invalid_images'">invalid images</button>
+        </div>
+        <div class="color_dict">
+            <form class="class_filter" id="class_filter" action='/class_filtering', method="POST">
+            </form>
+            <button type="button" id="color_change" onclick="color_change()"> color change </button>
+            <button type="submit" form="class_filter">필터링</button>
+        </div>
+        <div class="remaining_img_num">
+        <p>남은 이미지 수</p>
+        <p>{{ num_remaining_img }}</p>
+        </div>
+    </div>
+    <div class="full_image">
+        <div class="image">
+            <img id="full_img" src="{{ url_for('img_show', i=0, mode=0) }}" alt=0>
+            <p id="full_img_name"></P>
+        </div>
+        <div class="btn">
+            <button type="button" id="invalid_btn" onclick="imgNameDelivery()">invalid</button>
+            <br />
+            <a id="img_download" href="{{ url_for('static', filename='image/full_image_v.png') }}" download><button id="download">이미지 다운로드</button></a>
+            <a id="img_download" href="{{ url_for('static', filename='image/full_image.png') }}" download><button id="download">원본 이미지 다운로드</button></a>
+        </div>
+    </div>
+</body>
+<script src="//cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+<script>
+    var img_name_list = {{ img_name_list|safe }}
+    var color_dict = {{ color_dict|safe }}
+    $(document).ready(function() {
+        for (var i = 0; i < img_name_list.length; i++){
+            var item_tmp = "<div class=\"item\"><img id=\"img\" src=\"{{ url_for('img_show', i='index', mode=0) }}\" alt=index>".replace(/index/gi, i)+img_name_list[i]+"</div>"
+            console.log(item_tmp)
+            $(".menu").before(item_tmp);
+        }
+        // label 표시하기
+        for (i in color_dict){
+            var color_tmp = `<div><input type="checkbox" name="each_class" value=${i}><span id=\"class_name\">${i} : </span><div id=\"class_color\" style="background-color:rgb(${color_dict[i][2]},${color_dict[i][1]},${color_dict[i][0]})"></div></div>`
+            console.log(color_tmp)
+            $(".class_filter").append(color_tmp)
+        }
+        $(".container > .item > #img").on("click", function(){
+            var img_index = $(this).attr("alt");
+            $(".container").css({
+                display: "none"
+            })
+            $(".full_image").css({
+                display: "grid"
+            })
+            var uf = `{{ url_for('img_show', i='var', mode=0) }}`.replace('var', img_index);
+            $("#full_img").attr("src", uf)
+            $("#full_img").attr("alt", img_index)
+            $("#full_img_name").text(img_name_list[img_index])
+
+            var full_img_index = {'full_img_i':img_index, 'mode':0}
+            $.ajax({
+                url: '/copy_full_img',
+                type: 'POST',
+                data: JSON.stringify(full_img_index),
+                dataType: 'JSON',
+                contentType: "application/json",
+                success: function(data){
+                    console.log('copy to "static/image"')
+                },
+                error: function(request, status, error) {
+                    console.log('ajax 통신 실패');
+                    console.log(error);
+                }
+            })
+        })
+
+        $("#full_img").on("click", function(){
+            $(".container").css({
+                display: "grid"
+            })
+            $(".full_image").css({
+                display: "none"
+            })
+        })
+
+    });
+
+    function sample_img_refresh(){
+        $.ajax({
+            url: '/already_seen_img_save',
+            type: 'POST',
+            data: JSON.stringify('seen_img_save'),
+            dataType: "JSON",
+            contentType: "application/json",
+            success: function(data){
+                location.reload()
+            },
+            error: function(request, status, error) {
+                console.log('ajax 통신 실패');
+                console.log(error);
+            }
+        })
+    }
+
+    function imgNameDelivery(){
+        var invalid_img_i = $("#full_img").attr("alt");
+        var send_data = {'invalid_img_i':invalid_img_i};
+        $.ajax({
+            url: '/invalid_img',
+            type: 'POST',
+            data: JSON.stringify(send_data),
+            dataType: 'JSON',
+            contentType: "application/json",
+            success: function(data){
+                console.log('success')
+            },
+            error: function(request, status, error) {
+                console.log('ajax 통신 실패');
+                console.log(error);
+            }
+        });
+    };
+
+    function color_change(){
+        $.ajax({
+            url: '/color_change',
+            type: 'POST',
+            data: JSON.stringify('color_change'),
+            dataType: "JSON",
+            contentType: "application/json",
+            success: function(data){
+                location.reload()
+            },
+            error: function(request, status, error) {
+                console.log('ajax 통신 실패');
+                console.log(error);
+            }
+        })
+    }
+</script>
+</html>
