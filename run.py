@@ -6,26 +6,20 @@ from sample_extract import sample_extract
 import argparse
 
 current_folder = os.path.dirname(os.path.abspath(__file__))
+os.chdir(current_folder)
 
 app = Flask(__name__)
 
 def parse():
     parse = argparse.ArgumentParser(description='Image Dataset Sample SHOW')
-    parse.add_argument('--visualize', default=False)
-    
-    # parse.add_argument('--imgs_path', default='/local_hdd/works/ICRyu_workspace/for_yolo/dataset/data2/image_2')
-    # parse.add_argument('--labels_path', default='/local_hdd/works/ICRyu_workspace/for_yolo/dataset/data2/label_2')
-    # parse.add_argument('--names_path', default='/local_hdd/works/ICRyu_workspace/for_yolo/dataset/obj_names.txt')
-    # parse.add_argument('--imgs_path', default='/local_hdd/works/ICRyu_workspace/for_yolo/dataset/novacos_filtered')
-    # parse.add_argument('--labels_path', default='/local_hdd/works/ICRyu_workspace/for_yolo/dataset/novacos_filtered')
-    # parse.add_argument('--names_path', default=os.path.join(current_folder, 'obj_names.txt'))
-    parse.add_argument('--imgs_path', default='/DL_data/Spocado/data/yolo_train_dataset_v04')
-    parse.add_argument('--labels_path', default='/DL_data/Spocado/data/yolo_train_dataset_v04')
-    parse.add_argument('--names_path', default='/local_hdd/works/ICRyu_workspace/for_yolo/train/spocado/yolov4_spocado_v2.names')
+    parse.add_argument('--visualize', default=True)
+    parse.add_argument('--imgs_path', default='/DL_data_super_hdd/BIT/dataset/coco_format/images/val')
+    parse.add_argument('--labels_path', default='/DL_data_super_hdd/BIT/dataset/coco_format/val_bit_coco.json')
+    parse.add_argument('--names_path', default=os.path.join(current_folder, "obj_names.txt"))
     # parse.add_argument('--imgs_path', default='/DL_data_big/mobility_aids/Images_RGB')
 
     parse.add_argument('--sample_num', type=int, default=12)
-    parse.add_argument('--label_format', default='YOLO') # KITTI, YOLO
+    parse.add_argument('--label_format', default='COCO') # KITTI, YOLO, COCO
     parse.add_argument('--label_select', default=False, help='function that can see selected label')
     # parse.add_argument('--invalid_imgList_path', default='/DL_data/object_detection_dataset/yolo/aichallenge')
 

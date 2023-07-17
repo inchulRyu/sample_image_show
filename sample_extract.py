@@ -6,6 +6,9 @@ import datetime
 import shutil
 import numpy as np
 from tqdm import tqdm
+import json
+from pycocotools.coco import COCO
+
 current_path = os.path.dirname(os.path.abspath(__file__))
 
 class sample_extract:
@@ -20,6 +23,8 @@ class sample_extract:
         self.sample_num = args.sample_num
 
         self.file_list_tmp = os.listdir(self.img_folder_path)
+        
+        self.coco = None
 
         # print(len(file_list_tmp))
         # print(os.path.splitext(file_list_tmp[0])[1])
@@ -104,6 +109,24 @@ class sample_extract:
                             else:
                                 each_file_label[class_name] = 1
                     self.labels_info[e] = each_file_label
+                    
+            # COCO
+            elif self.args.label_format == 'COCO':
+                self.coco = COCO(self.label_folder_path)
+                cats = self.coco.loadCats(self.coco.getCatIds())
+                self.classes_list=[cat['name'] for cat in cats]
+    
+                # if self.args.label_select:
+                # # 라벨파일 스캔해서 저장하기
+                #     label_list_temps = os.listdir(self.label_folder_path)
+                #     for e in tqdm(label_list_temps):
+                #         each_file_label = np.zeros(num_classes, dtype='int8')
+                #         with open(os.path.join(self.label_folder_path, e), 'r') as f:
+                #             labels_tmp = f.readlines()
+                #             labels_tmp = list(map(lambda x: x.split(), labels_tmp))
+                #             for l in labels_tmp:
+                #                 each_file_label[int(l[0])] += 1
+                #         self.labels_info[e] = each_file_label                
             print('completed')
 
             self.color = {name: [
@@ -123,7 +146,6 @@ class sample_extract:
 
     def visualize(self, image, labels, thickness=4):
         for each_label in labels:
-
             # try:
             if self.args.label_format == 'YOLO':
                 c, x, y, w, h = list(map(float,each_label))
@@ -136,6 +158,7 @@ class sample_extract:
                 y_min = int((y-h/2)*img_h)
                 x_max = int((x+w/2)*img_w)
                 y_max = int((y+h/2)*img_h)
+                
             elif self.args.label_format == 'KITTI':
                 class_name = each_label[0]
                 truncated = float(each_label[1]) # 화면 밖으로 잘린 정도. 0 ~ 1
@@ -148,6 +171,27 @@ class sample_extract:
                     continue
 
                 x_min, y_min, x_max, y_max = list(map(lambda x: int(float(x)),each_label[4:8]))
+            
+            elif self.args.label_format == 'COCO':
+                c, x_min, y_min, w, h = list(map(float,each_label))
+                x_max = x_min + w
+                y_max = y_min + h
+                
+                x_min = int(x_min)
+                y_min = int(y_min)
+                x_max = int(x_max)
+                y_max = int(y_max)
+                
+                c = int(c)
+
+                img_h, img_w, _ = image.shape
+
+                class_name = self.classes_list[c]
+                # x_min = int((x-w/2)*img_w)
+                # y_min = int((y-h/2)*img_h)
+                # x_max = int((x+w/2)*img_w)
+                # y_max = int((y+h/2)*img_h)                
+                
             # except:
             #     print(f'label file format이 {self.args.label_format}과(와) 일치하지 않거나 label file이 잘못되었습니다.')
 
@@ -259,9 +303,25 @@ class sample_extract:
 
             if self.args.visualize == True:
                 # 라벨 읽기
-                with open(os.path.join(self.label_folder_path, self.sample_img_name[index][:-3]+'txt'), 'r') as lf:
-                    labels = lf.readlines()
-                    labels = list(map(lambda x: x.split(), labels))
+                if self.args.label_format == "COCO":
+                    img_file_name = self.sample_img_name[index]
+                    imgIds = self.coco.getImgIds(imgIds = [i['id'] for i in self.coco.dataset['images'] if i['file_name'] == img_file_name])
+
+                    # 어노테이션 불러오기
+                    annIds = self.coco.getAnnIds(imgIds=imgIds[0], iscrowd=None)
+                    anns = self.coco.loadAnns(annIds)
+                    
+                    labels = []
+                    
+                    # 어노테이션 출력
+                    for ann in anns:
+                        label = [ann['category_id']-1]
+                        label.extend(ann['bbox'])
+                        labels.append(label)
+                else: 
+                    with open(os.path.join(self.label_folder_path, self.sample_img_name[index][:-3]+'txt'), 'r') as lf:
+                        labels = lf.readlines()
+                        labels = list(map(lambda x: x.split(), labels))
 
                 # bbox 그리기
                 img = self.visualize(img, labels, thickness=4)
@@ -333,10 +393,31 @@ class sample_extract:
             cv2.imwrite('static/image/full_image.png', full_img)
 
             if self.args.visualize == True:
+                # # 라벨 읽기
+                # with open(os.path.join(self.label_folder_path, self.sample_img_name[img_index][:-3]+'txt'), 'r') as lf:
+                #     labels = lf.readlines()
+                #     labels = list(map(lambda x: x.split(), labels))
+                    
                 # 라벨 읽기
-                with open(os.path.join(self.label_folder_path, self.sample_img_name[img_index][:-3]+'txt'), 'r') as lf:
-                    labels = lf.readlines()
-                    labels = list(map(lambda x: x.split(), labels))
+                if self.args.label_format == "COCO":
+                    img_file_name = self.sample_img_name[img_index]
+                    imgIds = self.coco.getImgIds(imgIds = [i['id'] for i in self.coco.dataset['images'] if i['file_name'] == img_file_name])
+
+                    # 어노테이션 불러오기
+                    annIds = self.coco.getAnnIds(imgIds=imgIds[0], iscrowd=None)
+                    anns = self.coco.loadAnns(annIds)
+                    
+                    labels = []
+                    
+                    # 어노테이션 출력
+                    for ann in anns:
+                        label = [ann['category_id']-1]
+                        label.extend(ann['bbox'])
+                        labels.append(label)
+                else: 
+                    with open(os.path.join(self.label_folder_path, self.sample_img_name[img_index][:-3]+'txt'), 'r') as lf:
+                        labels = lf.readlines()
+                        labels = list(map(lambda x: x.split(), labels))                    
 
                 # bbox 그리기
                 full_img = self.visualize(full_img, labels, thickness=4)
